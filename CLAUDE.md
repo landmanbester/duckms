@@ -10,7 +10,7 @@ DuckMS is a Python tool for converting CASA Measurement Sets (radio astronomy da
 
 The main architecture revolves around the `MSToDuckDBConverter` class in `duckms/ms_to_duckdb.py:27`:
 
-- **Main Data Processing**: Converts the primary MS table to partitioned Parquet files (partitioned by `OBSERVATION_ID`) 
+- **Main Data Processing**: Converts the primary MS table to partitioned Parquet files (partitioned by `OBSERVATION_ID`)
 - **Subtable Handling**: Converts 13 standard MS subtables (ANTENNA, FIELD, etc.) to DuckDB tables
 - **Complex Data Conversion**: Splits complex numpy arrays into separate real/imaginary columns with shape metadata preservation
 - **Unified View Creation**: Creates a comprehensive DuckDB view that joins main data with relevant subtables
