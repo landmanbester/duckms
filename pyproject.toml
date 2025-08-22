@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Convert CASA Measurement Sets to hybrid DuckDB/Parquet format"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 authors = [
     {name = "Claude", email = "noreply@anthropic.com"}
 ]
@@ -58,6 +58,9 @@ path = "duckms/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["duckms"]
+exclude = [
+  "LICENSE",
+]
 
 # Ruff configuration
 [tool.ruff]
