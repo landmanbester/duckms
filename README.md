@@ -107,13 +107,13 @@ conn = duckdb.connect('/path/to/output.duckdb/data.duckdb')
 
 # Query the unified view
 result = conn.execute("""
-    SELECT 
-        TIME, 
-        ANTENNA1_NAME, 
-        ANTENNA2_NAME, 
+    SELECT
+        TIME,
+        ANTENNA1_NAME,
+        ANTENNA2_NAME,
         FIELD_NAME,
         DATA_REAL[1] as first_channel_real
-    FROM main_view 
+    FROM main_view
     WHERE OBSERVATION_ID = 0
     LIMIT 10
 """).fetchdf()

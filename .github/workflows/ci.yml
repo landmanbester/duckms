@@ -109,7 +109,7 @@ jobs:
           uv pip install --upgrade pip wheel setuptools
           # Install numpy first for better compatibility
           uv pip install "numpy>=1.24.0"
-          
+
       - name: Install python-casacore
         run: |
           # Install casacore first
@@ -133,38 +133,38 @@ jobs:
           uv run python -c "
           import sys
           print(f'Python version: {sys.version}')
-          
+
           # Test basic imports
           try:
               import duckdb
               print('✓ DuckDB imported successfully')
           except ImportError as e:
               print(f'✗ DuckDB import failed: {e}')
-              
+
           try:
               import pyarrow
               print('✓ PyArrow imported successfully')
           except ImportError as e:
               print(f'✗ PyArrow import failed: {e}')
-              
+
           try:
               import pandas
               print('✓ Pandas imported successfully')
           except ImportError as e:
               print(f'✗ Pandas import failed: {e}')
-              
+
           try:
               import numpy
               print('✓ NumPy imported successfully')
           except ImportError as e:
               print(f'✗ NumPy import failed: {e}')
-          
+
           try:
               from casacore.tables import table
               print('✓ Casacore imported successfully')
           except ImportError as e:
               print(f'⚠ Casacore import failed (expected on some systems): {e}')
-          
+
           # Test main package import
           try:
               from duckms import MSToDuckDBConverter

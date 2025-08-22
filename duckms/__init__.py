@@ -1,7 +1,7 @@
 """
 DuckMS: Convert CASA Measurement Sets to hybrid DuckDB/Parquet format.
 
-A robust Python tool for converting CASA Measurement Sets into a hybrid 
+A robust Python tool for converting CASA Measurement Sets into a hybrid
 DuckDB/Parquet format optimized for modern data analysis workflows.
 """
 
