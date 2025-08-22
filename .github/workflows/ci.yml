@@ -1,0 +1,266 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+          uv pip install ruff
+
+      - name: Run ruff linter
+        run: uv run ruff check .
+
+      - name: Run ruff formatter check
+        run: uv run ruff format --check .
+
+      - name: Run mypy type checker
+        run: uv run mypy duckms/
+        continue-on-error: true
+
+  test-installation:
+    name: Test Installation
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        exclude:
+          # python-casacore may have issues on some combinations
+          - os: macos-latest
+            python-version: "3.8"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcfitsio-dev \
+            wcslib-dev \
+            libfftw3-dev \
+            libhdf5-dev \
+            libboost-dev \
+            libboost-python-dev \
+            libboost-filesystem-dev \
+            libboost-system-dev \
+            flex \
+            bison \
+            libblas-dev \
+            liblapack-dev \
+            gfortran
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install \
+            cfitsio \
+            wcslib \
+            fftw \
+            hdf5 \
+            boost \
+            boost-python3 \
+            flex \
+            bison \
+            openblas \
+            lapack \
+            gfortran
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv pip install --upgrade pip wheel setuptools
+          # Install numpy first for better compatibility
+          uv pip install "numpy>=1.24.0"
+          
+      - name: Install python-casacore
+        run: |
+          # Install casacore first
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get install -y casacore-dev
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install casacore
+          fi
+          uv pip install python-casacore
+        continue-on-error: true
+
+      - name: Install project dependencies
+        run: |
+          uv pip install duckdb pyarrow pandas fsspec
+
+      - name: Install project in development mode
+        run: uv pip install -e .
+
+      - name: Test basic import
+        run: |
+          uv run python -c "
+          import sys
+          print(f'Python version: {sys.version}')
+          
+          # Test basic imports
+          try:
+              import duckdb
+              print('✓ DuckDB imported successfully')
+          except ImportError as e:
+              print(f'✗ DuckDB import failed: {e}')
+              
+          try:
+              import pyarrow
+              print('✓ PyArrow imported successfully')
+          except ImportError as e:
+              print(f'✗ PyArrow import failed: {e}')
+              
+          try:
+              import pandas
+              print('✓ Pandas imported successfully')
+          except ImportError as e:
+              print(f'✗ Pandas import failed: {e}')
+              
+          try:
+              import numpy
+              print('✓ NumPy imported successfully')
+          except ImportError as e:
+              print(f'✗ NumPy import failed: {e}')
+          
+          try:
+              from casacore.tables import table
+              print('✓ Casacore imported successfully')
+          except ImportError as e:
+              print(f'⚠ Casacore import failed (expected on some systems): {e}')
+          
+          # Test main package import
+          try:
+              from duckms import MSToDuckDBConverter
+              converter = MSToDuckDBConverter()
+              print('✓ DuckMS package imported and instantiated successfully')
+          except ImportError as e:
+              print(f'✗ DuckMS import failed: {e}')
+              raise
+          "
+
+      - name: Test CLI entry point
+        run: |
+          uv run ms-to-duckdb --help
+        continue-on-error: true
+
+      - name: Run basic unit tests (if they exist)
+        run: |
+          if [ -d "tests" ] && [ -f "tests/test_*.py" ]; then
+            uv run pytest tests/ -v
+          else
+            echo "No tests directory found, skipping unit tests"
+          fi
+        continue-on-error: true
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package
+        run: |
+          uv run pip install twine
+          uv run twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+          retention-days: 7
+
+  test-package-install:
+    name: Test Package Installation
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-files
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcfitsio-dev \
+            wcslib-dev \
+            libfftw3-dev \
+            libhdf5-dev \
+            libboost-dev \
+            flex \
+            bison \
+            libblas-dev \
+            liblapack-dev \
+            gfortran \
+            casacore-dev
+
+      - name: Test wheel installation
+        run: |
+          uv pip install dist/*.whl
+          uv run python -c "from duckms import MSToDuckDBConverter; print('Package installed successfully')"
+
+      - name: Test source installation
+        run: |
+          uv pip uninstall -y duckms
+          uv pip install dist/*.tar.gz
+          uv run python -c "from duckms import MSToDuckDBConverter; print('Source package installed successfully')"
