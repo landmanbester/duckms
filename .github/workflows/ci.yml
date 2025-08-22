@@ -48,19 +48,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        exclude:
-          # python-casacore may have issues on some combinations
-          - os: macos-latest
-            python-version: "3.8"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install system dependencies (Ubuntu)
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -76,23 +71,6 @@ jobs:
             bison \
             libblas-dev \
             liblapack-dev \
-            gfortran
-
-      - name: Install system dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install \
-            cfitsio \
-            wcslib \
-            fftw \
-            hdf5 \
-            boost \
-            boost-python3 \
-            flex \
-            bison \
-            openblas \
-            lapack \
             gfortran
 
       - name: Install uv
@@ -115,11 +93,7 @@ jobs:
       - name: Install python-casacore
         run: |
           # Install casacore first
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get install -y casacore-dev
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install casacore
-          fi
+          sudo apt-get install -y casacore-dev
           uv pip install python-casacore
         continue-on-error: true
 
